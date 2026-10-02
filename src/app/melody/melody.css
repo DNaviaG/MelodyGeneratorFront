@@ -1,0 +1,795 @@
+/* ============================================================
+   MELODY GENERATOR
+   ------------------------------------------------------------
+   Ningún color ni tipografía literales aquí: todo sale de los
+   tokens de styles.css. Así el tema claro/oscuro y cualquier
+   cambio de paleta se resuelven en un único sitio.
+   ============================================================ */
+
+:host {
+  display: block;
+}
+
+/*
+  LA PÁGINA TIENE QUE MEDIR LO QUE MIDE LA VENTANA.
+
+  Este es el punto de partida de que todo lo demás encaje. `min-height: 100dvh`
+  no significa "que quepa todo": significa "que esta página ocupe al menos una
+  pantalla". La diferencia importa porque, sin una altura así, la columna flex no
+  tiene espacio sobrante que repartir, `flex: 1` no hace nada, y el piano roll se
+  queda con el alto de su contenido: medido, 217,9px igual en una ventana de
+  1080 que en una de 768, con las filas siempre a 16,6px y media pantalla de
+  negro debajo.
+
+  Con `100dvh` la página sí tiene altura, el sobrante va al piano roll (el único
+  `flex: 1` con `min-height: 0`, que es lo único que cede espacio) y las 13 filas
+  se reparten ese alto. El resto de la página son cabeceras y paneles con alto
+  natural, que no se encogen.
+
+  La barra sale sola cuando la ventana es tan baja que ya no queda sitio: en ese
+  caso la media query de abajo deja de anclar la página a la ventana y la página
+  vuelve a medir lo que mida su contenido.
+*/
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /*
+    El espacio que sobra se reparte arriba y abajo en vez de quedarse pegado al
+    piano roll. Antes sobraba espacio de dos maneras: en ventanas altas, el piano
+    roll (que es el único `flex: 1`) se comía los 600-1000px que sobraban y
+    quedaba 10 veces más alto que el transporte; y al ponerle techo a ese, el
+    hueco se habría quedado debajo, con la página cortada a media altura.
+    Centrando, el bloque entero se ve equilibrado sea cual sea la ventana.
+  */
+  justify-content: center;
+  gap: .45rem;
+  padding: .6rem;
+  max-width: 1080px;
+  margin: 0 auto;
+  background:
+    radial-gradient(ellipse 900px 420px at 50% -10%, var(--panel-2), transparent 70%),
+    var(--bg);
+}
+
+/* ============================================================
+   CABECERA
+   ============================================================ */
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--fg);
+}
+
+.page-subtitle {
+  margin: .15rem 0 0;
+  color: var(--fg-2);
+  font-size: .75rem;
+}
+
+/* Botón de icono (solo tema, de momento) */
+.btn-icon {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  color: var(--fg-2);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+
+.btn-icon:hover {
+  color: var(--fg);
+  background: var(--panel-2);
+  border-color: var(--line-2);
+}
+
+.btn-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ============================================================
+   PANELES
+   ============================================================ */
+
+.panel {
+  flex-shrink: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: .5rem .8rem;
+  margin-bottom: 0;
+}
+
+/*
+  El piano roll se estira para llenar el espacio que sobra y cede el que falta.
+  Por eso su alto mínimo es 0 (ver `.piano-roll`): es lo único que puede
+  encogerse, y si se le pusiera un suelo fijo ese suelo se sumaría a los ~400px
+  fijos del resto de la página y la desbordaría, que es lo que hacía aparecer la
+  barra lateral en pantallas normales.
+*/
+.panel-roll {
+  flex: 1;
+  min-height: 0;
+  /*
+    Techo del piano roll, y es la mitad de "arreglado": sin él, `flex: 1` hace que
+    su alto dependa solo de lo alta que sea la ventana, y en un monitor grande se
+    comía media pantalla mientras el transporte se quedaba en sus 60px.
+
+    26rem = 468px con la raíz a 18px. Por encima de los 368,8px que ya estaban
+    medidos y verificados en una ventana de 768px de alto.
+
+    El `min(..., 44vh)` es lo que garantiza que la página nunca necesite scroll:
+    al subir el tamaño de la raíz, las cabeceras y los paneles crecen a la vez, y
+    sin este tope el piano roll se llevaría por delante el alto que necesitan.
+    En una ventana alta manda 26rem; en una baja, el 44% del alto, y el resto
+    queda para lo otro. Es el intercambio: en una ventana pequeña el piano roll
+    cede alto para que todo lo demás pueda ser más grande.
+  */
+  max-height: min(26rem, 44vh);
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+  Alto fijo en la cabecera del panel. Antes crecía según el contenido, y como
+  los chips de la tonalidad solo aparecen cuando hay melodía, generar hacía que
+  esa cabecera creciera y todo lo de abajo bajara. Con el alto fijo el texto
+  cabe siempre y los chips no llegan a saltar de línea.
+*/
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  /*
+    `min-height` y no `height`: el alto tiene que ser el mismo con y sin chips
+    (si no, al generar la cabecera crece y todo lo de abajo baja), y a la vez
+    tiene que dar de sí al chip, que mide 24,8px. Con 1.2rem la cabecera se
+    quedaba corta y los chips se salían 2,8px por arriba y por abajo, comiéndose
+    el padding del panel. 1.6rem los deja dentro sin cambiar nada el alto entre
+    los dos estados.
+  */
+  min-height: 1.6rem;
+  margin-bottom: .45rem;
+  flex-shrink: 0;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* Chips de información. Sin wrap: si saltan de línea, la cabecera crece. */
+.chips {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .4rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .15rem .6rem;
+  font-size: .75rem;
+  color: var(--fg-2);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.chip b {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-3);
+}
+
+.dot-chord {
+  background: var(--accent);
+}
+
+/* Leyenda de colores */
+.legend {
+  display: flex;
+  gap: .85rem;
+  font-size: .75rem;
+  color: var(--fg-3);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.swatch-live {
+  border-radius: 50%;
+}
+
+/* Mismo relleno que el silencio del piano roll, para que la leyenda no mienta. */
+.swatch-rest {
+  background: var(--panel-3);
+  border: 1px solid var(--fg-3);
+}
+
+/* ============================================================
+   CAMPOS Y CONTROLES
+   ============================================================ */
+
+/*
+  Cuatro columnas y cuatro hijos. Antes ponía TRES columnas para cuatro hijos
+  (tónica, modo, tempo y el botón), así que el botón caía en una fila nueva
+  encima de la columna de 130px: medido, 130x51,6px con el texto partido en dos
+  líneas, de ahí el botón redondo gigante. La cuarta columna es `auto` para que
+  el botón mida lo que mida su texto y se quede en la misma fila que los campos.
+*/
+.fields {
+  display: grid;
+  grid-template-columns: 130px 170px 1fr auto;
+  gap: .8rem;
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  min-width: 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .7rem;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+
+.field-value {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.control {
+  width: 100%;
+  padding: .32rem .55rem;
+  font: inherit;
+  font-size: .82rem;
+  color: var(--fg);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+}
+
+.control:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Control segmentado: mayor / menor */
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+}
+
+.seg-btn {
+  padding: .3rem .45rem;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--fg-2);
+  background: transparent;
+  border: 0;
+  border-radius: calc(var(--r-sm) - 2px);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.seg-btn:hover {
+  color: var(--fg);
+}
+
+.seg-btn-active {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+/* Deslizador de tempo */
+.slider {
+  width: 100%;
+  height: 4px;
+  margin: .55rem 0 0;
+  background: var(--line-2);
+  border-radius: var(--r-pill);
+  appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: 2px solid var(--panel);
+  border-radius: 50%;
+}
+
+/* ============================================================
+   BOTONES
+   ============================================================ */
+
+/*
+  El botón "Generar melodía" va en la MISMA línea que los campos, no en una fila
+  aparte debajo. Esa fila extra eran ~64px de alto fijo que el piano roll no
+  tenía de dónde sacar, y era buena parte de por qué la página no cabía.
+
+  Va en la cuarta columna (`auto`) de `.fields`, la del botón, así que mide
+  justo lo que mide su texto y se queda pegado a la derecha, alineado con los
+  campos por `align-items: end`.
+*/
+.actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .35rem .8rem;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+
+.btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn:hover {
+  background: var(--panel-3);
+}
+
+.btn-primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+.btn-play {
+  color: var(--accent-ink);
+  background: var(--live);
+  border-color: var(--live);
+}
+
+.btn-play:hover {
+  background: var(--live);
+  opacity: .88;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   TRANSPORTE
+   ============================================================ */
+
+.transport {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .4rem;
+  margin-bottom: .4rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+/*
+  El bucle no es un botón, es un estado: un checkbox de verdad con el
+  glifo dentro, no un comando más en la fila. El input se oculta pero
+  sigue siendo input de verdad, así el label entero es la zona clicable
+  y el teclado lo cambia con el espacio.
+*/
+
+.loop {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-right: .3rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.loop-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loop-box {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+}
+
+.loop-box svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.loop-label {
+  font-size: .75rem;
+  color: var(--fg-2);
+}
+
+.loop:hover .loop-box {
+  border-color: var(--fg-3);
+}
+
+.loop-input:checked + .loop-box {
+  background: var(--live);
+  border-color: var(--live);
+}
+
+.loop-input:checked + .loop-box svg {
+  stroke: var(--accent-ink);
+}
+
+.loop-input:focus-visible + .loop-box {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   PIANO ROLL
+   ------------------------------------------------------------
+   Las filas se reparten el alto disponible con `1fr` en vez de
+   tener una altura fija en píxeles. Por eso el piano roll cabe
+   siempre en la pantalla sin scroll: si la ventana es más baja,
+   las filas se encogen. Como la altura de la nota la pone
+   melody.ts en porcentaje, sigue cuadrada con filas de cualquier
+   alto.
+   ============================================================ */
+
+.piano-roll {
+  --label-w: 52px;
+
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  /*
+    Alto mínimo 0 a propósito: el piano roll es lo único que cede espacio. Con
+    un suelo fijo, ese suelo se sumaría al alto natural del resto de la página
+    y la desbordaría en pantallas normales.
+
+    La caja tiene `overflow: hidden` para que nada de lo que se pinta dentro (la
+    capa de notas, que es absoluta) pueda salirse de ella.
+  */
+  min-height: 0;
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+
+/*
+  Las filas se pegan a la caja con `position: absolute; inset: 0` en vez de con
+  `height: 100%`, y esto no es un detalle menor.
+
+  `height: 100%` no se resuelve cuando el alto de la caja viene de `flex: 1`:
+  el navegador lo trata como `auto` y la rejilla se queda con el alto de su
+  contenido. Medido: con la caja a 368,8px, `height: 100%` dejaba las filas en
+  215,9px mientras la capa de notas (que sí es absoluta) ocupaba los 366,8px de
+  verdad. Con las dos capas de sistemas de coordenadas distintos, las notas se
+  pintaban hasta 150px por encima de su fila, y al iluminarse esa nota se veía
+  el rayado verde saliendo de la fila (el bug 3).
+
+  Fijando las filas a la caja con `inset: 0`, las dos capas miden exactamente lo
+  mismo, y las notas se quedan dentro de su fila a cualquier altura de ventana.
+*/
+.piano-roll-rows {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-auto-rows: 1fr;
+}
+
+.piano-roll-row {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  min-height: 0;
+}
+
+.piano-roll-row:last-child {
+  border-bottom: 0;
+}
+
+.piano-roll-label {
+  width: var(--label-w);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  font-size: .65rem;
+  font-weight: 600;
+  color: var(--fg-3);
+  background: var(--panel-2);
+  border-right: 1px solid var(--line-2);
+}
+
+.piano-roll-lane {
+  flex: 1;
+  min-width: 0;
+}
+
+.piano-roll-row:nth-child(even) .piano-roll-lane {
+  background: color-mix(in srgb, var(--fg) 2.5%, transparent);
+}
+
+.piano-roll-overlay {
+  position: absolute;
+  inset: 0 0 0 var(--label-w);
+  pointer-events: none;
+}
+
+/*
+  La nota no lleva el nombre dentro. La fila de la izquierda ya dice qué nota es,
+  y dentro del bloque el texto solo servía para estorbar: en una semicorchea no
+  cabe y sale cortado por la mitad, que es justo lo que queda feo. El nombre se
+  queda en el title, que sale al pasar el ratón.
+*/
+.piano-roll-note {
+  position: absolute;
+  box-sizing: border-box;
+  background: var(--chord);
+  border-radius: calc(var(--r-sm) - 2px);
+  min-width: 2px;
+}
+
+/*
+  El silencio es un hueco, no una nota. Se pinta en gris plano con contorno
+  fuerte, en vez de naranja: el color es la diferencia entre "aquí no suena nada"
+  y "aquí suena esto". Con relleno liso se ve incluso en una semicorchea, que
+  es lo más pequeño que llega a dibujarse; un borde discontinuo en un bloque
+  de 15px no se ve.
+*/
+.piano-roll-note-rest {
+  background: var(--panel-3);
+  border: 1px solid var(--fg-3);
+  border-radius: calc(var(--r-sm) - 2px);
+}
+
+.piano-roll-note-active {
+  background: var(--live);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45);
+}
+
+.piano-roll-divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-2);
+}
+
+/* ============================================================
+   ESTADO VACÍO
+   ============================================================ */
+
+/*
+  El estado vacío ocupa la MISMA caja que las notas, y por eso no cambia el alto
+  de la página al generar. Va con `inset: 0` (y no con `height: 100%`) por lo
+  mismo que las filas: así depende de la caja y no de cómo se haya medido.
+*/
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .3rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.empty svg {
+  width: 30px;
+  height: 30px;
+  margin-bottom: .2rem;
+  fill: none;
+  stroke: var(--fg-3);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+
+.empty-hint {
+  margin: 0;
+  font-size: .85rem;
+  color: var(--fg-3);
+}
+
+.empty-hint b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/*
+  Ventana baja: aquí la página deja de estar anclada a la ventana, y con razón.
+
+  Arriba, `min-height: 100dvh` hace que el piano roll se encogiese tanto como
+  haga falta y la barra nunca sale. Cuando la ventana ya es más pequeña que el
+  alto natural del resto de la página (~300px de cabeceras, ajustes y
+  transporte), encoger el piano roll sin límite lo deja ilegible; así que aquí
+  la página vuelve a medir lo que mida su contenido y el piano roll recibe un
+  suelo real para que las 13 filas sigan entrando.
+
+  Con eso, y solo con eso, la página crece más que la ventana y sale la barra:
+  en una ventana diminuta tiene que salir.
+*/
+@media (max-height: 620px) {
+
+  .page {
+    min-height: 0;
+  }
+
+  .piano-roll {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+
+  .page {
+    padding: .75rem;
+  }
+
+  .page-title {
+    font-size: 1.25rem;
+  }
+
+  .panel {
+    padding: .7rem;
+  }
+
+  .fields {
+    grid-template-columns: 1fr;
+    gap: .6rem;
+  }
+
+  .transport {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .transport .btn-play {
+    grid-column: 1 / -1;
+  }
+
+  .legend {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+
+  .page {
+    padding-left: .5rem;
+    padding-right: .5rem;
+  }
+
+  .piano-roll {
+    --label-w: 40px;
+  }
+}

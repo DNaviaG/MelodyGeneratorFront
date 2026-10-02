@@ -1,0 +1,135 @@
+/* ============================================================
+   SISTEMA DE DISEÑO
+   ------------------------------------------------------------
+   Aquí viven los tokens: los valores de color, tipografía y
+   forma que usa toda la aplicación. Ningún otro archivo debería
+   escribir un color o una tipografía literales: se referencian
+   estas variables.
+
+   Cambiar el aspecto de la app entera se hace tocando SOLO
+   este bloque.
+   ============================================================ */
+
+:root {
+  color-scheme: dark;
+
+  /* Superficies, de la más profunda a la más elevada */
+  --bg:        #0a0b0d;
+  --bg-2:      #0f1114;
+  --panel:     #14171c;
+  --panel-2:   #1a1e24;
+  --panel-3:   #22272f;
+
+  /* Bordes */
+  --line:      rgba(255, 255, 255, .07);
+  --line-2:    rgba(255, 255, 255, .13);
+
+  /* Texto */
+  --fg:        #e7e9ec;
+  --fg-2:      #98a0aa;
+  --fg-3:      #626a75;
+
+  /* Acento: el color de la acción principal y de las notas */
+  --accent:      #ffa94d;
+  --accent-2:    #ffc078;
+  --accent-ink:  #1c1204;
+
+  /* Estado "sonando ahora" */
+  --live:      #3ddc97;
+
+  /* Tipos de nota dentro del piano roll */
+  --chord:     #ffa94d;
+  --passing:   #6b7a8f;
+
+  /* Elevación */
+  --shadow:  0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -8px rgba(0, 0, 0, .6);
+
+  /* Formas */
+  --r:      10px;
+  --r-sm:   7px;
+  --r-pill: 999px;
+
+  /* Tipografías */
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, monospace;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+}
+
+/* El tema claro solo redefine valores. No repite reglas. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:        #f4f5f7;
+  --bg-2:      #eceef1;
+  --panel:     #ffffff;
+  --panel-2:   #f7f8fa;
+  --panel-3:   #eef0f3;
+
+  --line:      rgba(10, 12, 16, .09);
+  --line-2:    rgba(10, 12, 16, .16);
+
+  --fg:        #14171c;
+  --fg-2:      #5a626d;
+  --fg-3:      #8b929c;
+
+  --accent:      #d97706;
+  --accent-2:    #b45309;
+  --accent-ink:  #fff8ed;
+
+  --live:      #059669;
+
+  --chord:     #d97706;
+  --passing:   #94a3b8;
+
+  --shadow:  0 1px 2px rgba(10, 12, 16, .06), 0 8px 24px -10px rgba(10, 12, 16, .18);
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+
+/*
+  Reset mínimo, y no es cosmético: sin esto la página no cabe nunca.
+
+  - `margin: 0`: el body trae 8px por defecto del navegador, arriba y abajo.
+  - `box-sizing: border-box`: sin esto, `height` y `min-height` miden solo el
+    contenido y el padding se suma por fuera. `.page` pedía `min-height: 100dvh`
+    con `padding: 1rem`, así que medía 100dvh + 32px y la página siempre
+    desbordaba, sin importar el tamaño de la ventana.
+*/
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+
+  /*
+    18px en vez del 16px por defecto del navegador. Es el único sitio del proyecto
+    donde se decide el tamaño de TODA la app, porque melody.css está escrito casi
+    entero en `rem`: tipografías, espaciados, radios y el propio techo del piano
+    roll. Subir esta línea sube las cuatro cosas a la vez y, como los
+    proportions se mantienen, el layout no se descuadra.
+
+    Lo que NO escala, y es lo que tiene que ser así: los tamaños fijos en píxeles
+    de los iconos (el botón del tema, el pulgar del deslizador, el punto de los
+    chips). Un icono que crece con el texto se deforma.
+  */
+  font-size: 18px;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+}
+
+/* Los números de tempo y los nombres de nota usan monoespaciada
+   para que no bailen al cambiar de valor. */
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,249 @@
+<div class="page">
+
+  <!-- ============================================================
+       CABECERA
+       ============================================================ -->
+  <header class="page-head">
+    <div>
+      <h1 class="page-title">Melody Generator</h1>
+      <p class="page-subtitle">Generador de melodías aleatorias</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-icon"
+      (click)="toggleTheme()"
+      [attr.aria-label]="isDark() ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+      [title]="isDark() ? 'Tema claro' : 'Tema oscuro'"
+    >
+      @if (isDark()) {
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" />
+          <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2
+                   M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" />
+        </svg>
+      } @else {
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z" />
+        </svg>
+      }
+    </button>
+  </header>
+
+  <!-- ============================================================
+       PANEL: TONALIDAD Y TEMPO
+       ============================================================ -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Melodía</h2>
+
+      @if (melodyObject(); as melody) {
+        <div class="chips">
+          <span class="chip">
+            <i class="dot dot-chord"></i>
+            {{ formatScaleName(melody.scale) }}
+          </span>
+          <span class="chip">
+            <i class="dot"></i>
+            <b class="mono">{{ melody.measures.length }}</b> compases
+          </span>
+        </div>
+      }
+    </div>
+
+    <div class="fields">
+
+      <div class="field">
+        <label class="field-label" for="rootSelect">Tónica</label>
+        <select
+          id="rootSelect"
+          class="control"
+          [value]="selectedRootIndex()"
+          (change)="selectRoot(+$any($event.target).value)"
+        >
+          @for (option of rootOptions; track option.index) {
+            <option [value]="option.index">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Modo</label>
+        <div class="seg" role="group" aria-label="Modo de la escala">
+          @for (mode of modes; track mode) {
+            <button
+              type="button"
+              class="seg-btn"
+              [class.seg-btn-active]="isModeActive(mode)"
+              [attr.aria-pressed]="isModeActive(mode)"
+              (click)="selectMode(mode)"
+            >
+              {{ modeLabel(mode) }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="tempo">
+          Tempo
+          <span class="field-value mono">{{ tempo() }} BPM</span>
+        </label>
+        <input
+          id="tempo"
+          type="range"
+          class="slider"
+          min="40"
+          max="240"
+          [value]="tempo()"
+          (input)="changeTempo(+$any($event.target).value)"
+        >
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="generateMelody()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v18M3 12h18" />
+          </svg>
+          Generar melodía
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       PANEL: PIANO ROLL
+
+       El transporte y la caja del piano roll están SIEMPRE en el
+       DOM. Antes solo aparecían al generar, y eso hacía que el panel
+       creciera de golpe y la página saltara hacia abajo. Ahora el
+       espacio está reservado: generar solo rellena la caja.
+       ============================================================ -->
+  <section class="panel panel-roll">
+    <div class="panel-head">
+      <h2 class="panel-title">Piano roll</h2>
+
+      <div class="spacer"></div>
+
+      <div class="legend">
+        <span><i class="swatch" style="background: var(--chord)"></i> Nota</span>
+        <span><i class="swatch swatch-rest"></i> Silencio</span>
+        <span><i class="swatch swatch-live" style="background: var(--live)"></i> Sonando</span>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button
+        type="button"
+        class="btn btn-play"
+        [disabled]="!hasMelody()"
+        (click)="isPlaying() ? pauseMelody() : playMelody()"
+      >
+        @if (isPlaying()) {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 5v14M15 5v14" />
+          </svg>
+          Pausar
+        } @else {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 4.5l12 7.5-12 7.5z" />
+          </svg>
+          Reproducir
+        }
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-ghost"
+        [disabled]="!hasMelody()"
+        (click)="stopMelody()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6h12v12H6z" />
+        </svg>
+        Detener
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-ghost"
+        [disabled]="!hasMelody()"
+        (click)="resetMelody()"
+      >
+<svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 20H7L3 16a2 2 0 0 1 0-2.8l8-8a2 2 0 0 1 2.8 0l6 6a2 2 0 0 1 0 2.8L13 20" />
+          </svg>
+        Limpiar
+      </button>
+
+      <label class="loop">
+        <input
+          type="checkbox"
+          class="loop-input"
+          [checked]="loop()"
+          (change)="setLoop($any($event.target).checked)"
+        />
+        <span class="loop-box" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 9h13" />
+            <path d="M14.5 6l3 3-3 3" />
+            <path d="M20 15H7" />
+            <path d="M9.5 12l-3 3 3 3" />
+          </svg>
+        </span>
+        <span class="loop-label">Bucle</span>
+      </label>
+    </div>
+
+    <div class="piano-roll">
+      @if (hasMelody()) {
+
+        <div class="piano-roll-rows">
+          @for (noteName of pianoRollNotes; track noteName) {
+            <div class="piano-roll-row">
+              <div class="piano-roll-label mono">
+                {{ formatNoteName(noteName) }}
+              </div>
+              <div class="piano-roll-lane"></div>
+            </div>
+          }
+        </div>
+
+        <div class="piano-roll-overlay">
+          @for (divider of pianoRollLayout().dividers; track $index) {
+            <div class="piano-roll-divider" [style.left.%]="divider"></div>
+          }
+
+          @for (block of pianoRollLayout().blocks; track block.id) {
+            <div
+              class="piano-roll-note"
+              [class.piano-roll-note-rest]="block.rest"
+              [class.piano-roll-note-active]="isCurrentNote(block.measureIndex, block.noteIndex)"
+              [style.top.%]="noteTop(block.rowIndex) + rowOffset()"
+              [style.height.%]="rowHeight()"
+              [style.left.%]="block.left"
+              [style.width.%]="block.width"
+              [title]="block.label"
+            ></div>
+          }
+        </div>
+
+      } @else {
+
+        <div class="empty">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18V6l11-2v12" />
+            <circle cx="6.5" cy="18" r="2.6" />
+            <circle cx="17.5" cy="16" r="2.6" />
+          </svg>
+          <p class="empty-title">Todavía no hay ninguna melodía</p>
+          <p class="empty-hint">Elige una tonalidad y pulsa <b>Generar melodía</b>.</p>
+        </div>
+
+      }
+    </div>
+
+  </section>
+
+</div>
