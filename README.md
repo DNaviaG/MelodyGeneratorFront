@@ -99,20 +99,6 @@ ng build
 
 Los archivos generados se almacenarán en el directorio dist/.
 
-Pruebas
-
-El proyecto usa Vitest como framework de pruebas.
-
-Para ejecutar los tests:
-
-ng test
-
-En esta V1 solo se cubre la creación del componente raíz. El piano roll, los servicios y la reproducción de audio no tienen cobertura automática.
-
-Estado del proyecto
-
-Esta versión corresponde a la V1 del frontend.
-
 El frontend está integrado con el backend y permite completar el flujo principal de la aplicación: seleccionar una escala, generar una melodía, visualizarla y reproducirla.
 
 Pendiente
